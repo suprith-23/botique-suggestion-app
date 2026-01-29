@@ -23,7 +23,7 @@ class UploadResponse(UploadBase):
     """Upload response schema"""
     id: int
     user_id: int
-    image_path: str
+    file_path: str
     created_at: datetime
     
     class Config:
@@ -35,7 +35,7 @@ class UploadListResponse(BaseModel):
     id: int
     cloth_type: ClothType
     occasion: Occasion
-    image_path: str
+    file_path: str
     created_at: datetime
     user_id: int
     

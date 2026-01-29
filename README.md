@@ -101,8 +101,8 @@ Full-stack application for boutique design suggestions using FastAPI, React, and
 cd backend
 
 # Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+python3.13 -m venv .venv
+source .venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
@@ -111,12 +111,8 @@ pip install -r requirements.txt
 cp .env.example .env
 # Edit .env with your database URL and settings
 
-# Run migrations (creates tables)
+# Run API Server & creates tables 
 python main.py
-
-# Start server
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
 
 ### Frontend Setup
 
