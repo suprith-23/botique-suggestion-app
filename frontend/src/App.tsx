@@ -8,6 +8,7 @@ import { UserDashboard } from '@/pages/UserDashboard';
 import { AdminDashboard } from '@/pages/AdminDashboard';
 import { SavedDesignsPage } from '@/pages/SavedDesignsPage';
 import { ProfilePage } from '@/pages/ProfilePage';
+import { DesignSuggestionPage } from '@/pages/DesignSuggestionPage';
 import './index.css';
 
 function App() {
@@ -43,6 +44,16 @@ function App() {
               <ProtectedRoute requiredRole="user">
                 <Navbar />
                 <SavedDesignsPage />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/design-suggestions/:uploadId"
+            element={
+              <ProtectedRoute requiredRole="user">
+                <Navbar />
+                <DesignSuggestionPage />
               </ProtectedRoute>
             }
           />

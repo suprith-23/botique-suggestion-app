@@ -1,19 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, Eye, Download, Heart, Share2 } from 'lucide-react';
+import { Upload } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/services/api';
-import { Upload as UploadType, DesignSuggestion } from '@/types';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+import { Upload as UploadType } from '@/types';
 
 export const UserDashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [uploads, setUploads] = useState<UploadType[]>([]);
-  const [suggestions, setSuggestions] = useState<DesignSuggestion[]>([]);
-  const [selectedUpload, setSelectedUpload] = useState<UploadType | null>(null);
-  const [selectedSuggestion, setSelectedSuggestion] = useState<DesignSuggestion | null>(null);
   const [loading, setLoading] = useState(true);
   const [file, setFile] = useState<File | null>(null);
   const [clothType, setClothType] = useState('kurti');
@@ -23,11 +18,9 @@ export const UserDashboard: React.FC = () => {
   const [budgetRange, setBudgetRange] = useState('3000-8000');
   const [fabricDescription, setFabricDescription] = useState('');
   const [uploading, setUploading] = useState(false);
-  const [savedDesigns, setSavedDesigns] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     loadUploads();
-    loadSavedDesigns();
   }, []);
 
   const loadUploads = async () => {
@@ -38,16 +31,6 @@ export const UserDashboard: React.FC = () => {
     } catch (error) {
       console.error('Error loading uploads:', error);
       setLoading(false);
-    }
-  };
-
-  const loadSavedDesigns = async () => {
-    try {
-      const response = await api.getSavedDesigns();
-      const saved = new Set(response.data.map((d: DesignSuggestion) => d.id));
-      setSavedDesigns(saved);
-    } catch (error) {
-      console.error('Error loading saved designs:', error);
     }
   };
 
@@ -70,13 +53,8 @@ export const UserDashboard: React.FC = () => {
       const newUpload = response.data;
       setUploads([newUpload, ...uploads]);
 
-      // Load suggestions
-      const suggestionsResponse = await api.getUploadSuggestions(newUpload.id);
-      setSuggestions(suggestionsResponse.data);
-      setSelectedUpload(newUpload);
-      if (suggestionsResponse.data.length > 0) {
-        setSelectedSuggestion(suggestionsResponse.data[0]);
-      }
+      // Navigate to suggestions page
+      navigate(`/design-suggestions/${newUpload.id}`);
 
       setFile(null);
       (document.getElementById('fileInput') as HTMLInputElement).value = '';
@@ -89,68 +67,7 @@ export const UserDashboard: React.FC = () => {
   };
 
   const handleViewSuggestions = async (upload: UploadType) => {
-    setSelectedUpload(upload);
-    try {
-      const response = await api.getUploadSuggestions(upload.id);
-      setSuggestions(response.data);
-      if (response.data.length > 0) {
-        setSelectedSuggestion(response.data[0]);
-      }
-    } catch (error) {
-      console.error('Error loading suggestions:', error);
-    }
-  };
-
-  const handleSaveDesign = async (suggestion: DesignSuggestion) => {
-    try {
-      await api.saveDesign(suggestion.id);
-      setSavedDesigns(new Set([...savedDesigns, suggestion.id]));
-    } catch (error) {
-      console.error('Error saving design:', error);
-      alert('Design already saved or error occurred');
-    }
-  };
-
-  const handleUnsaveDesign = async (suggestion: DesignSuggestion) => {
-    try {
-      await api.unsaveDesign(suggestion.id);
-      setSavedDesigns(new Set([...savedDesigns].filter(id => id !== suggestion.id)));
-    } catch (error) {
-      console.error('Error unsaving design:', error);
-    }
-  };
-
-  const downloadAsImage = async () => {
-    if (!selectedSuggestion) return;
-    
-    const canvas = await html2canvas(document.getElementById('suggestion-card') || document.body);
-    const link = document.createElement('a');
-    link.href = canvas.toDataURL();
-    link.download = `design-suggestion-${selectedSuggestion.id}.png`;
-    link.click();
-  };
-
-  const downloadAsPDF = async () => {
-    if (!selectedSuggestion) return;
-    
-    const pdf = new jsPDF();
-    pdf.setFontSize(16);
-    pdf.text('Design Suggestion', 20, 20);
-    
-    pdf.setFontSize(10);
-    const details = [
-      `Neck Design: ${selectedSuggestion.neck_design}`,
-      `Sleeve Style: ${selectedSuggestion.sleeve_style}`,
-      `Embroidery Pattern: ${selectedSuggestion.embroidery_pattern}`,
-      `Color Combination: ${selectedSuggestion.color_combination}`,
-      `Border Style: ${selectedSuggestion.border_style}`,
-      ``,
-      `Description:`,
-      selectedSuggestion.description,
-    ];
-    
-    pdf.text(details, 20, 40);
-    pdf.save(`design-suggestion-${selectedSuggestion.id}.pdf`);
+    navigate(`/design-suggestions/${upload.id}`);
   };
 
   if (loading) {
@@ -272,160 +189,36 @@ export const UserDashboard: React.FC = () => {
           </form>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Uploads List */}
-          <div className="lg:col-span-1">
-            <div className="card p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">📋 Your Uploads</h3>
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {uploads.length === 0 ? (
-                  <p className="text-gray-500 text-center py-4">No uploads yet</p>
-                ) : (
-                  uploads.map((upload) => (
-                    <button
-                      key={upload.id}
-                      onClick={() => handleViewSuggestions(upload)}
-                      className={`w-full text-left p-3 rounded-lg transition ${
-                        selectedUpload?.id === upload.id
-                          ? 'bg-purple-100 border-2 border-purple-600'
-                          : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
-                      }`}
-                    >
-                      <p className="font-medium text-gray-700">{upload.cloth_type}</p>
-                      <p className="text-sm text-gray-500">{upload.occasion}</p>
-                      <p className="text-xs text-gray-400">{new Date(upload.created_at).toLocaleDateString()}</p>
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Saved Designs */}
-            <div className="card p-6 mt-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">❤️ Saved Designs</h3>
-              <button
-                onClick={() => navigate('/saved-designs')}
-                className="w-full btn-secondary"
-              >
-                View All Saved
-              </button>
-            </div>
-          </div>
-
-          {/* Suggestions Detail */}
-          <div className="lg:col-span-2">
-            {selectedSuggestion ? (
-              <div className="card p-8">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-2xl font-bold text-gray-800">✨ Design Suggestion</h3>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={downloadAsImage}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition"
-                      title="Download as Image"
-                    >
-                      <Download size={20} />
-                    </button>
-                    <button
-                      onClick={downloadAsPDF}
-                      className="p-2 hover:bg-gray-100 rounded-lg transition"
-                      title="Download as PDF"
-                    >
-                      <Download size={20} />
-                    </button>
-                    <button
-                      onClick={() =>
-                        savedDesigns.has(selectedSuggestion.id)
-                          ? handleUnsaveDesign(selectedSuggestion)
-                          : handleSaveDesign(selectedSuggestion)
-                      }
-                      className={`p-2 rounded-lg transition ${
-                        savedDesigns.has(selectedSuggestion.id)
-                          ? 'bg-red-100 text-red-600'
-                          : 'hover:bg-gray-100'
-                      }`}
-                      title="Save Design"
-                    >
-                      <Heart
-                        size={20}
-                        fill={savedDesigns.has(selectedSuggestion.id) ? 'currentColor' : 'none'}
-                      />
-                    </button>
-                    <button
-                      className="p-2 hover:bg-gray-100 rounded-lg transition"
-                      title="Share Design"
-                    >
-                      <Share2 size={20} />
-                    </button>
-                  </div>
-                </div>
-
-                <div id="suggestion-card" className="space-y-6 bg-gray-50 p-6 rounded-lg">
-                  <div>
-                    <h4 className="text-lg font-semibold text-gray-800 mb-2">🎯 Design Details</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-600">Neck Design</p>
-                        <p className="text-base font-medium text-gray-800">{selectedSuggestion.neck_design}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Sleeve Style</p>
-                        <p className="text-base font-medium text-gray-800">{selectedSuggestion.sleeve_style}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Embroidery Pattern</p>
-                        <p className="text-base font-medium text-gray-800">{selectedSuggestion.embroidery_pattern}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Color Combination</p>
-                        <p className="text-base font-medium text-gray-800">{selectedSuggestion.color_combination}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Border Style</p>
-                        <p className="text-base font-medium text-gray-800">{selectedSuggestion.border_style}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Confidence Score</p>
-                        <p className="text-base font-medium text-gray-800">{selectedSuggestion.confidence_score}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="text-lg font-semibold text-gray-800 mb-2">📝 Description</h4>
-                    <p className="text-gray-700 leading-relaxed">{selectedSuggestion.description}</p>
-                  </div>
-                </div>
-
-                {suggestions.length > 1 && (
-                  <div className="mt-6">
-                    <h4 className="text-lg font-semibold text-gray-800 mb-3">Other Suggestions</h4>
-                    <div className="space-y-2">
-                      {suggestions.map((suggestion, idx) => (
-                        <button
-                          key={suggestion.id}
-                          onClick={() => setSelectedSuggestion(suggestion)}
-                          className={`w-full text-left p-3 rounded-lg border transition ${
-                            selectedSuggestion.id === suggestion.id
-                              ? 'bg-purple-100 border-purple-600'
-                              : 'border-gray-200 hover:bg-gray-50'
-                          }`}
-                        >
-                          <p className="font-medium text-gray-700">Suggestion {idx + 1}</p>
-                          <p className="text-sm text-gray-600 truncate">{suggestion.description}</p>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+        <div className="card p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">📋 Your Uploads</h3>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {uploads.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">No uploads yet</p>
             ) : (
-              <div className="card p-8 text-center">
-                <Eye size={48} className="mx-auto text-gray-300 mb-4" />
-                <p className="text-gray-500 text-lg">Select or upload an item to see suggestions</p>
-              </div>
+              uploads.map((upload) => (
+                <button
+                  key={upload.id}
+                  onClick={() => handleViewSuggestions(upload)}
+                  className="w-full text-left p-3 rounded-lg transition bg-gray-50 border border-gray-200 hover:bg-gray-100"
+                >
+                  <p className="font-medium text-gray-700">{upload.cloth_type}</p>
+                  <p className="text-sm text-gray-500">{upload.occasion}</p>
+                  <p className="text-xs text-gray-400">{new Date(upload.created_at).toLocaleDateString()}</p>
+                </button>
+              ))
             )}
           </div>
+        </div>
+
+        {/* Saved Designs */}
+        <div className="card p-6 mt-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">❤️ Saved Designs</h3>
+          <button
+            onClick={() => navigate('/saved-designs')}
+            className="w-full btn-secondary"
+          >
+            View All Saved
+          </button>
         </div>
       </div>
     </div>
